@@ -4,7 +4,7 @@ library(janitor)
 
 # 1. Preprocesing data ----------------------------------------------------
 study_area <- c("tacna")
-data_hog <- read_delim("raw/sisfogh/PGH_MAR_2025/PGH_HOGAR_PPSS.txt",delim = "|") %>%
+data_hog <- read_delim("raw/sisfogh/PGH_MAR_2025/PGH_HOGAR_PPSS.txt",delim = "|",locale = locale(encoding = "latin1")) %>%
   clean_names() %>%
   filter(hogar_departamento_0 %in% str_to_upper(study_area)) %>% 
   mutate(
@@ -28,7 +28,7 @@ data_hog <- read_delim("raw/sisfogh/PGH_MAR_2025/PGH_HOGAR_PPSS.txt",delim = "|"
       .default = "Sin Dato")) %>% 
   filter(hogar_area != "RURAL")
   
-data_per <- read_delim("raw/sisfogh/PGH_MAR_2025/PGH_PERSONA_PPSS.txt",delim = "|") %>%
+data_per <- read_delim("raw/sisfogh/PGH_MAR_2025/PGH_PERSONA_PPSS.txt",delim = "|",locale = locale(encoding = "latin1")) %>%
   clean_names() %>% 
   mutate(
     persona_tipo_doc = case_when(
@@ -47,4 +47,4 @@ data_per <- read_delim("raw/sisfogh/PGH_MAR_2025/PGH_PERSONA_PPSS.txt",delim = "
 data.sisfog <- data_hog %>% 
   left_join(data_per,by = "hogar_id")
 
-write_csv(data.sisfog,paste0('processed/data_sisfog_',first(study_area),'.csv'))
+write_excel_csv2(data.sisfog,paste0('processed/data_sisfog_',first(study_area),'.csv'))

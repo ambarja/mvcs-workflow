@@ -5,11 +5,11 @@ library(openxlsx)
 sf_use_s2(FALSE)
 
 name_padron <- "padron_general_tacna"
-data_sisfhog <- read_csv("processed/data_sisfog_tacna.csv")
+data_sisfhog <- read_csv2("processed/data_sisfog_tacna.csv")
 
 # --------------------------------------------------------
-data_cofopri <- st_read("processed/tacna_lotes_wgs84.gpkg")
-titulares <- read_csv("processed/titulares.csv") %>% 
+data_cofopri <- st_read("processed/lotes_wgs84_tacna.gpkg")
+titulares <- read_csv2("processed/titulares.csv") %>% 
   mutate(
     estado_civil = case_when(
       estado_civil == "S" ~ "Soltero(a)",
@@ -33,13 +33,31 @@ zonificacion <- st_read("raw/microzonificacion/Otros/microzonificacion_sismica_t
 rm(data.match.cofopri)
 rm(data_sisfhog)
 # ----------------------------------------------------------
-layer_intersect <- st_intersection(data_sisfhog.cofopri,zonificacion)
+layer_intersect <- st_join(x = data_sisfhog.cofopri,y = zonificacion,join = st_intersects,left = FALSE)
 pueblo <- st_read("processed/pueblo_wgs84.gpkg") %>% select(nom_pueblo)
-layer_intersect2 <- st_intersection(layer_intersect, pueblo)
+layer_intersect2 <- st_join(x = layer_intersect,y = pueblo,join = st_within)
+
+# Filtrar registros SIN pueblo asignado (NA en columnas de 'pueblo')
+sin_pueblo <- layer_intersect2 %>% filter(is.na(nom_pueblo))
+con_pueblo <- layer_intersect2 %>% filter(!is.na(nom_pueblo))
+
+indices_cercanos <- st_nearest_feature(sin_pueblo, pueblo)
+sin_pueblo_con_cercano <- pueblo[indices_cercanos, ] %>% 
+  st_drop_geometry()
+
+sin_pueblo_edited <- sin_pueblo %>%
+  mutate(nom_pueblo = sin_pueblo_con_cercano$nom_pueblo)
+
+resultado_final <- bind_rows(con_pueblo, sin_pueblo_edited)
+rm(indices_cercanos)
+rm(sin_pueblo_con_cercano)
+rm(sin_pueblo_edited)
+rm(con_pueblo)
+rm(sin_pueblo)
 rm(layer_intersect)
 rm(pueblo)
 # ----------------------------------------------------------
-padron <- layer_intersect2 %>%
+padron <- resultado_final %>%
   group_by(id_predio) %>% 
   mutate(cant_prop = n()) %>% 
   filter(id_zona != "Zona IV") 
@@ -94,10 +112,7 @@ padron_coords <- padron %>%
   ) %>% 
   st_drop_geometry()
 
-rm(zonificacion)
-rm(layer_intersect2)
-rm(titulares)
-rm(data_sisfhog.cofopri)
+rm(resultado_final)
 # -----------------------------------------------------------------------
 if(!dir.exists("output")){dir.create("output")}
 write.xlsx(padron_coords,paste0("output/",name_padron,".xlsx"))

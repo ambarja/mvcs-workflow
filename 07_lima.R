@@ -5,11 +5,12 @@ library(openxlsx)
 sf_use_s2(FALSE)
 
 name_padron <- "padron_general_lima"
-data_sisfhog <- read_csv("processed/data_sisfog_lima.csv")
+data_sisfhog <- read_csv2("processed/data_sisfog_lima.csv")
 
 # --------------------------------------------------------
-data_cofopri <- st_read("processed/lima_lotes_wgs84.gpkg")
-titulares <- read_csv("processed/titulares.csv") %>% 
+data_cofopri <- st_read("processed/lotes_wgs84_lima.gpkg")
+
+titulares <- read_csv2("processed/titulares.csv") %>% 
   mutate(
     estado_civil = case_when(
       estado_civil == "S" ~ "Soltero(a)",
@@ -19,15 +20,16 @@ titulares <- read_csv("processed/titulares.csv") %>%
   )
 
 data.match.cofopri <- data_cofopri %>% 
-  left_join(titulares, by = c("id_predio"="codigo_predio"))
+  left_join(titulares, by = c("id_predio"="codigo_predio"),relationship = "many-to-many")
 
 rm(data_cofopri)
 #----------------------------------------------------------
-
 data_sisfhog.cofopri <- data.match.cofopri %>% 
   inner_join(data_sisfhog,by = c("nro_doc_identidad"="persona_nro_doc"))
 
-zonificacion <- st_read("raw/microzonificacion/Otros/microzonificacion_sismica_lima.gpkg") %>% 
+zonificacion <- st_read("raw/microzonificacion/Otros/microzonificacion_sismica_lima.gpkg") %>%
+  st_cast("MULTIPOLYGON") %>%
+  st_make_valid() %>% 
   rename(
     id_zona = reg_zona,
     fuente  = reg_fuente,
@@ -37,11 +39,30 @@ zonificacion <- st_read("raw/microzonificacion/Otros/microzonificacion_sismica_l
 rm(data.match.cofopri)
 rm(data_sisfhog)
 # ----------------------------------------------------------
-layer_intersect_pre <- st_intersection(data_sisfhog.cofopri,zonificacion)
+layer_intersect <- st_join(x = data_sisfhog.cofopri,y = zonificacion,join = st_intersects,left = FALSE)
 pueblo <- st_read("processed/pueblo_wgs84.gpkg") %>% select(nom_pueblo)
-layer_intersect_post <- st_intersection(layer_intersect_pre, pueblo)
-rm(layer_intersect_pre)
+layer_intersect2 <- st_join(x = layer_intersect,y = pueblo,join = st_within)
+
+# Filtrar registros SIN pueblo asignado (NA en columnas de 'pueblo')
+sin_pueblo <- layer_intersect2 %>% filter(is.na(nom_pueblo))
+con_pueblo <- layer_intersect2 %>% filter(!is.na(nom_pueblo))
+
+indices_cercanos <- st_nearest_feature(sin_pueblo, pueblo)
+sin_pueblo_con_cercano <- pueblo[indices_cercanos, ] %>% 
+  st_drop_geometry()
+
+sin_pueblo_edited <- sin_pueblo %>%
+  mutate(nom_pueblo = sin_pueblo_con_cercano$nom_pueblo)
+
+resultado_final <- bind_rows(con_pueblo, sin_pueblo_edited)
+rm(indices_cercanos)
+rm(sin_pueblo_con_cercano)
+rm(sin_pueblo_edited)
+rm(con_pueblo)
+rm(sin_pueblo)
+rm(layer_intersect)
 rm(pueblo)
+
 # ----------------------------------------------------------
 condiciones_validas <- list(
   "BELLAVISTA" = c("ZONA I", "ZONA II"),
@@ -71,7 +92,8 @@ condiciones_validas <- list(
 )
 
 
-padron <- layer_intersect_post %>%
+padron <- resultado_final %>%
+  st_make_valid() %>% 
   group_by(id_predio) %>% 
   mutate(cant_prop = n()) %>% 
   filter(
@@ -140,7 +162,7 @@ rm(titulares)
 rm(data_sisfhog.cofopri)
 # -----------------------------------------------------------------------
 if(!dir.exists("output")){dir.create("output")}
-writexl::write_xlsx(padron_coords,paste0("output/",name_padron,".xlsx"))
+write.xlsx(padron_coords,paste0("output/",name_padron,".xlsx"))
 
 spatial_geometry <- padron %>% 
   group_by(id_predio) %>% 
