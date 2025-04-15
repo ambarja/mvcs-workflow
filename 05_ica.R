@@ -10,7 +10,7 @@ data_sisfhog <- read_csv2("processed/data_sisfog_ica.csv") %>%
 
 # --------------------------------------------------------
 data_cofopri <- st_read("processed/lotes_wgs84_ica.gpkg")
-titulares <- read_csv2("processed/titulares.csv") %>% 
+titulares <- read_csv2("processed/titulares_v2.csv") %>% 
   mutate(
     estado_civil = case_when(
       estado_civil == "S" ~ "Soltero(a)",

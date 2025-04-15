@@ -31,6 +31,10 @@ rm(list = ls())
 # 4. Titulares ------------------------------------------------------------
 # Obtener nombres de las hojas
 archivo <- "raw/cofopri/PEDIDO_MVCS_TITULARES_27NOV_2024.xlsx"
-hojas <- read_excel(path = archivo,sheet = 1)
-hojas_clean <- hojas %>% clean_names()
-write_excel_csv2(hojas_clean, "processed/titulares.csv")
+sheets <- readxl::excel_sheets("raw/cofopri/PEDIDO_MVCS_TITULARES_27NOV_2024.xlsx")
+fun_excel <- function(x){
+  data <- read_excel(path = archivo,sheet = sheets[x]) %>% clean_names()
+  return(data)
+}
+lista_excel <- lapply(1:length(sheets), FUN = fun_excel) %>% map_df(.f = as_tibble)
+write_excel_csv2(lista_excel, "processed/titulares_v2.csv")

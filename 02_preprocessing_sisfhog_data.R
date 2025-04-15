@@ -4,7 +4,10 @@ library(janitor)
 
 # 1. Preprocesing data ----------------------------------------------------
 study_area <- c("tacna")
-data_hog <- read_delim("raw/sisfogh/PGH_MAR_2025/PGH_HOGAR_PPSS.txt",delim = "|",locale = locale(encoding = "latin1")) %>%
+data_hog <- read_delim(
+  "raw/sisfogh/PGH_MAR_2025/PGH_HOGAR_PPSS.txt",
+  delim = "|",
+  locale = locale(encoding = "latin1")) %>%
   clean_names() %>%
   filter(hogar_departamento_0 %in% str_to_upper(study_area)) %>% 
   mutate(
@@ -17,8 +20,7 @@ data_hog <- read_delim("raw/sisfogh/PGH_MAR_2025/PGH_HOGAR_PPSS.txt",delim = "|"
       hogar_cse_niv_pobreza == "00220301" ~ "POBRE EXTREMO",
       hogar_cse_niv_pobreza == "00220302" ~ "POBRE",
       hogar_cse_niv_pobreza == "00220303" ~ "NO POBRE",
-      .default = "NA"
-    ),
+      .default = "NA"),
     vigente = case_when(
       vigente == "1" ~ "SI",
       .default = "NO"),
@@ -28,7 +30,10 @@ data_hog <- read_delim("raw/sisfogh/PGH_MAR_2025/PGH_HOGAR_PPSS.txt",delim = "|"
       .default = "Sin Dato")) %>% 
   filter(hogar_area != "RURAL")
   
-data_per <- read_delim("raw/sisfogh/PGH_MAR_2025/PGH_PERSONA_PPSS.txt",delim = "|",locale = locale(encoding = "latin1")) %>%
+data_per <- read_delim(
+  "raw/sisfogh/PGH_MAR_2025/PGH_PERSONA_PPSS.txt",
+  delim = "|",
+  locale = locale(encoding = "latin1")) %>%
   clean_names() %>% 
   mutate(
     persona_tipo_doc = case_when(
