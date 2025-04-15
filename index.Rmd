@@ -1,0 +1,128 @@
+---
+title: "Análisis Espacial sobre los Potenciales Beneficiarios del BPVVRS"
+subtitle: "DGPPVU"
+date: "`r Sys.Date()`"
+author: Antony Barja
+cache: false
+output:
+  rmdformats::downcute:
+    self_contained: true
+    default_style: "dark"
+    downcute_theme: "default"
+---
+<style>
+  div.dt-buttons > .dt-button:first-child, 
+  div.dt-buttons > div.dt-button-split .dt-button:first-child {
+    color: var(--text-color);
+    background: var(--primary-color);
+    border-color: var(--border-color);
+  }
+</style>
+
+```{r setup, include=FALSE}
+## Global options
+knitr::opts_chunk$set(cache = TRUE)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(sf)
+library(leaflet)
+library(leaflet.extras)
+library(leaflet.extras2)
+library(openxlsx)
+library(kableExtra)
+library(janitor)
+library(DT)
+library(crosstalk)
+```
+
+
+## 1. Resumen en general
+
+```{r, echo=FALSE,warning=FALSE,message=FALSE}
+lima_raw <- read.xlsx("output/padron_general_lima.xlsx") %>%
+  clean_names() 
+
+ica_raw <- read.xlsx('output/padron_general_ica.xlsx') %>% 
+  clean_names()
+
+tacna_raw <- read.xlsx('output/padron_general_tacna.xlsx') %>% 
+  clean_names()
+```
+
+
+```{r echo=FALSE}
+tibble(
+   Lima = lima_raw %>% distinct(predio,.keep_all = TRUE) %>% summarise(total = n()) %>% pull(),
+   Ica = ica_raw %>% distinct(predio,.keep_all = TRUE) %>% summarise(total = n()) %>% pull(),
+   Tacna = tacna_raw %>% distinct(predio,.keep_all = TRUE) %>% summarise(total = n()) %>% pull()
+   ) %>% kable()
+```
+
+## 3. Resumen por Departamentos  {.tabset}
+
+### Lima
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+lima_resumen <- lima_raw %>% 
+  distinct(predio,.keep_all = TRUE) %>%
+  group_by(provincia, distrito) %>% 
+  summarise(total = n())
+
+lima_resumen %>% 
+  datatable(filter = list(position = 'top', clear = FALSE),options = list(pageLength = 5))
+```
+
+
+```{r, lima, echo=FALSE, message=FALSE, warning=FALSE}
+lima_raw %>%
+  distinct(predio,.keep_all = TRUE) %>%
+  st_as_sf(coords = c("coord_x","coord_y"),crs = 4326) %>% 
+  leaflet() %>% 
+  addTiles() %>% 
+  addHeatmap(radius = 12) %>%
+  addResetMapButton()
+```
+
+### Ica
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ica_resumen <- ica_raw %>% 
+  distinct(predio,.keep_all = TRUE) %>%
+  group_by(provincia, distrito) %>% 
+  summarise(total = n())
+
+ica_resumen %>% 
+  datatable(filter = list(position = 'top', clear = FALSE),options = list(pageLength = 5))
+```
+
+```{r,ica,echo=FALSE, message=FALSE, warning=FALSE}
+ica_raw %>%
+  distinct(predio,.keep_all = TRUE) %>%
+  st_as_sf(coords = c("coord_x","coord_y"),crs = 4326) %>% 
+  leaflet() %>% 
+  addTiles() %>% 
+  addHeatmap(radius = 12) %>% 
+  addResetMapButton()
+```
+
+### Tacna
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
+tacna_resumen <- tacna_raw %>% 
+  distinct(predio,.keep_all = TRUE) %>%
+  group_by(provincia, distrito) %>% 
+  summarise(total = n())
+
+tacna_resumen %>% 
+  datatable(filter = list(position = 'top', clear = FALSE),options = list(pageLength = 5))
+```
+
+```{r, tacna,echo=FALSE, message=FALSE, warning=FALSE}
+tacna_raw %>%
+  distinct(predio,.keep_all = TRUE) %>%
+  st_as_sf(coords = c("coord_x","coord_y"),crs = 4326) %>% 
+  leaflet() %>% 
+  addTiles() %>% 
+  addHeatmap(radius = 12) %>% 
+  addResetMapButton()
+```
+
